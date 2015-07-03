@@ -29,7 +29,7 @@ Row format: 8 bits red, followed by 8 bits green, shifted in from PSU side
 #define PIN_E1 2
 #define PIN_IR 16
 
-#define ROW_LEN 20
-#define COL_LEN 8
+#define ROW_LEN 80*2
+#define NUM_ROW 7
 
 #endif // __SIGNMATRIX_H

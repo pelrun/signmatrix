@@ -6,7 +6,6 @@
 
 void setup() {
   Display_setup();
-  Display_enable(false);
 }
 
 void loop() {

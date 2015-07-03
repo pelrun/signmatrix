@@ -3,34 +3,76 @@ Row format: 8 bits red, followed by 8 bits green, shifted in from PSU side
  */
 
 //#include <SPI.h>
+#include <Ticker.h>
 
 #include "signmatrix.h"
 #include "display.h"
 
-static void loadRow(uint8_t *row)
+static Ticker frameUpdater;
+
+#define NUM_BUF 2
+
+static uint8_t frameBuf[NUM_BUF][NUM_ROW][ROW_LEN];
+static uint8_t bufNum;
+static uint8_t tick;
+
+static void loadRow(uint8_t *row, uint8_t timeslice)
 {
-  digitalWrite(PIN_LATCH,LOW);
+  digitalWrite(PIN_LATCH, LOW);
   // load shift register chain
   for (int i=0; i<ROW_LEN; i++)
   {
-    //SPI.write(row[i]);
-    shiftOut(PIN_DATA, PIN_CLOCK, LSBFIRST, row[i]);
+    digitalWrite(PIN_CLOCK, LOW);
+    digitalWrite(PIN_DATA, row[i]>timeslice?HIGH:LOW);
+    digitalWrite(PIN_DATA, HIGH);
   }
   // latch data
-  digitalWrite(PIN_LATCH,HIGH);
+  digitalWrite(PIN_LATCH, HIGH);
 }
 
-static void setColumn(uint8_t col)
+static void setRow(uint8_t row)
 {
-  digitalWrite(PIN_A0, col&1?HIGH:LOW);
-  digitalWrite(PIN_A1, col&2?HIGH:LOW);
-  digitalWrite(PIN_A2, col&4?HIGH:LOW);
+  digitalWrite(PIN_A0, row&1?HIGH:LOW);
+  digitalWrite(PIN_A1, row&2?HIGH:LOW);
+  digitalWrite(PIN_A2, row&4?HIGH:LOW);
+}
+
+static void updateFrame(uint8_t *frame);
+{
+  // FIXME: properly determine the framerate/pwm resolution
+  tick = (++tick)%16;
+
+  for (row=0; row<NUM_ROW; row++)
+  {
+    digitalWrite(PIN_E1, HIGH);
+    setRow(row);
+    loadRow(frame[bufNum][row], tick*16);
+    digitalWrite(PIN_E1, LOW);
+  }
+}
+
+void Display_newFrame(uint8_t *frame)
+{
+  uint8_t newBufNum = (bufNum+1)%NUM_BUF;
+  memcpy(frame[newBufNum],frame,ROW_LEN*NUM_ROW);
+  // flip buffer
+  bufNum = newBufNum;
 }
 
 void Display_enable(bool enable)
 {
-  // active low
-  digitalWrite(PIN_E1, enable?LOW:HIGH);
+  if (enable)
+  {
+    // enable update thread
+    frameUpdater.attach_ms(1, updateFrame);
+  }
+  else
+  {
+    // disable update thread
+    frameUpdater.detach();
+    // disable display
+    digitalWrite(PIN_E1, HIGH);
+  }
 }
 
 void Display_setup()
@@ -47,14 +89,14 @@ void Display_setup()
   pinMode(PIN_A2, OUTPUT);
   pinMode(PIN_E1, OUTPUT);
 //  pinMode(PIN_IR, INPUT_PULLUP);
-  showDisplay(false);
+  Display_enable(false);
 }
 
 void Display_test()
 {
-  int col = 0, i = 0;
+  int row = 0, i = 0;
 
-  setColumn((col++)%7);
+  setrow((row++)%NUM_ROW);
   digitalWrite(PIN_CLOCK, LOW);
   // set data
   digitalWrite(PIN_DATA, (i++%20)&1?LOW:HIGH); // shift in 1 high bit every 20 clocks
@@ -62,9 +104,9 @@ void Display_test()
   digitalWrite(PIN_CLOCK, HIGH);
   // latch data
   digitalWrite(PIN_LATCH, HIGH);
-  showDisplay(true);
+  digitalWrite(PIN_E1, LOW);
   digitalWrite(PIN_LATCH, LOW);
   delay(500);
-  showDisplay(false);
+  digitalWrite(PIN_E1, HIGH);
 }
 
