@@ -1,0 +1,10 @@
++5v - pin 1
+clock - 595:11:srclk - 244:18:1Y0/244:16:1Y1 - 244:2:1A0/244:4:1A1 - pin 2
+latch - 595:12:rclk - 244:14:1Y2 - 244:6:1A2 - pin 3
+row bit 0 - 244:12:1Y3 - 244:8:1A3 - pin 4
+row bit 1 - 244:9:2Y3 - 244:11:2A3 - pin 5
+row bit 2 - 244:7:2Y2 - 244:13:2A2 - pin 6
+/row enable - 244:5:2Y0/244:3:2Y1 - 244:17:2A0/244:15:2A1 - pin 7
+nc - pin 8
+serial in - 595:14:ser - pin 9
+gnd - pin 10
