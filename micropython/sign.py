@@ -5,6 +5,7 @@ from machine import Pin,SPI
 from umqtt.robust import MQTTClient
 import framebuf
 import time
+import network
 
 class SignMatrix(object):
     def __init__(self, width=480):
@@ -25,8 +26,10 @@ class SignMatrix(object):
         self._delay=200
 
     def show(self):
+        state = machine.disable_irq()
         for y in range(7,-1,-1):
             self._writerow(y)
+        machine.enable_irq(state)
 
     def _writerow(self, y):
         # shift out row data
@@ -39,11 +42,9 @@ class SignMatrix(object):
         self._a1.value(y&2)
         self._a2.value(y&4)
         # turn on output
-        state = machine.disable_irq()
         self._nenable.value(0)
         time.sleep_us(self._delay)
         self._nenable.value(1)
-        machine.enable_irq(state)
 
     def set_delay(self, delay):
         self._delay = delay
@@ -52,12 +53,15 @@ class SignMatrix(object):
         for ch in text:
             self.fb.fill_rect(484,0,4,7,0)
             self.fb.text(ch,479,0)
-            for b in range(0,7):
+            w = 7
+            if ch == 'W' or ch == 'M' or ch == "m" or ch == "w":
+                w = 8
+            for b in range(0,w):
                 self.show()
                 self.fb.scroll(-1,0)
 
 #text = "THIS IS THE SCROLLTEXT THAT DOESN'T END YES IT GOES ON AND ON MY FRIEND SOME PEOPLE STARTED READING IT NOT KNOWING WHAT IT WAS AND THEY'LL JUST KEEP ON READING IT FOREVER JUST BECAUSE "
-text = ""
+text = "No message set "
 delay = 700
 enable = 0
 
@@ -80,6 +84,7 @@ def main():
     c.connect()
     c.subscribe("devices/main-sign/#")
     c.publish("devices/main-sign/state","online", retain=True)
+    c.publish("devices/main-sign/ip",network.WLAN(network.STA_IF).ifconfig()[0])
 
     sign = SignMatrix(488)
     try:
@@ -96,4 +101,13 @@ def main():
         c.disconnect()
 
 if __name__ == '__main__':
+    timeout = 0
+    while not network.WLAN().isconnected():
+        time.sleep(1)
+        if timeout>10:
+            SignMatrix(488).scroller("Connection Fail!              ")
+        else:
+            timeout = timeout + 1
+
     main()
+
