@@ -84,7 +84,8 @@ def main():
     c.connect()
     c.subscribe("devices/main-sign/#")
     c.publish("devices/main-sign/state","online", retain=True)
-    c.publish("devices/main-sign/ip",network.WLAN(network.STA_IF).ifconfig()[0])
+    c.publish("devices/main-sign/ip",network.WLAN(network.STA_IF).ifconfig()[0],
+              retain = True)
 
     sign = SignMatrix(488)
     try:
